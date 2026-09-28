@@ -13,99 +13,106 @@
 
 (function() {
     'use strict';
-    const styles = {
-        badgeEl: `
-            display: inherit;
-            margin-left: 1em;
-            padding: 0.04em 0.6em 0.04em 0.4em;
-            background-color: rgba(255, 255, 255, 0.15);
-            border-radius: 4px;
-            font-size: 0.8em;
-            font-weight: bold;
-            text-align: center;
-            transition: all 0.2s;
-        `,
-        badgeText: `
-            color: white;
-            text-decoration: none !important;
-            transition: all 0.2s;
-        `
-    };
 
-    async function pkgsWithGhRepoHomepages() {
+    const ghToken = (localStorage.userscript_gh_token || null);
+
+    async function getGithubHomepageLinks() {
         const homepageLinkSelector = `div.search-page.success > div.search-results > div > ul > li.package > ul > li > a`;
         const homepageLinks = document.querySelectorAll(homepageLinkSelector);
-        const githubRepoHomepages = Array.from(homepageLinks).filter(link => link.innerText.includes("Homepage") && link.href.includes("github.com") && !link.href.includes("blob"));
-        return githubRepoHomepages;
+        return Array.from(homepageLinks).filter(link =>
+            link.innerText.includes("Homepage")
+            && link.href.includes("github.com")
+            && !link.href.includes("blob")
+        );
     }
 
-    async function fetchGithubRepoStars(ghRepoLink) {
-        const localToken = (localStorage.userscript_gh_token || null);
-        try {
-            const repoUrl = ghRepoLink.href;
-            const apiUrl = new URL(`https://api.github.com/repos${repoUrl.replace("https://github.com", "")}`);
-            const response = (localToken !== null)
-            ? await fetch(apiUrl, {
-                headers: {'Authorization': `token ${localToken}`}
-            }) : await fetch(apiUrl);
-            const data = await response.json();
-            const gazers = data.stargazers_count;
-            return `⭐️ ${gazers || "???"}`;
+    async function fetchRepoStars(repoLink) {
+        const getFetchUrl = repoUrl => {
+            let url = repoUrl.replace("https://github.com", "https://api.github.com/repos");
+            //: trim trailing slash if present
+            if (url.endsWith("/")) url = url.slice(0, -1);
+            return new URL(url);
+        };
 
+        try {
+            const apiUrl = getFetchUrl(repoLink.href),
+                response = (ghToken === null)
+                    ? await fetch(apiUrl)
+                    : await fetch(apiUrl, { headers: {'Authorization': `token ${ghToken}`} }),
+                data = await response.json(),
+                gazers = data.stargazers_count;
+            return `⭐️ ${gazers || "???"}`;
         } catch (error) {
             console.error("Failed to fetch stars:", error);
-            return `⭐️ ???`;
+            return `⭐️?`;
         }
     }
 
-    const createBadgeElements = repoLinkList => repoLinkList.map(repoLink => {
-        const starsBadge = document.createElement("li"), starsLink = document.createElement("a");
+    function createBadgeElements(links) {
+        const styles = {
+            badge: `
+                display: inherit;
+                margin-left: 1em;
+                padding: 0.04em 0.6em 0.04em 0.4em;
+                font-size: 0.8em; font-weight: bold; text-align: center;
+                background-color: rgba(255, 255, 255, 0.15);
+                border-radius: 4px;
+                transition: all 0.2s;
+            `,
+            text: `
+                color: white;
+                text-decoration: none !important;
+                transition: all 0.2s;
+            `
+        };
+
+        return links.map(l => {
+            const
+                starsBadge = document.createElement("li"),
+                starsLink = document.createElement("a");
         starsBadge.appendChild(starsLink);
-        starsBadge.style = styles.badgeEl;
-        starsLink.style = styles.badgeText;
+            starsBadge.style = styles.badge;
+            starsLink.style = styles.text;
         starsLink.target = "_blank";
-        starsLink.href = repoLink.href;
+            starsLink.href = l.href;
         return starsBadge;
     });
+    }
 
     async function main() {
-        const repoLinkList = await pkgsWithGhRepoHomepages();
-        if (repoLinkList.length === 0) {
-            console.warn("No GitHub repo homepages found.");
+        const homeLinks = await getGithubHomepageLinks();
+        if (homeLinks.length === 0) {
+            console.warn("No packages w/ GitHub repo homepages are present in the current results.");
             return;
         }
-        const badgeElements = createBadgeElements(repoLinkList);
-        const starsList = await Promise.all(repoLinkList.map(async repoLink => await fetchGithubRepoStars(repoLink)));
-        badgeElements.map((badge, i) => {
+        const starsList = await Promise.all(homeLinks.map(async link => await fetchRepoStars(link)));
+        const badgeList = createBadgeElements(homeLinks);
+        badgeList.forEach((badge, i) => {
             badge.querySelector("a").innerText = starsList[i]
         });
-        repoLinkList.forEach((repoLink, i) => repoLink.parentElement.appendChild(badgeElements[i]));
+        homeLinks.forEach((link, i) => link.parentElement.appendChild(badgeList[i]));
     }
 
     function runWhenLoaded() {
-        if (document.readyState === "complete") {
-            main();
-        } else {
-            window.addEventListener('load', main);
-        }
+        if (document.readyState === "complete") main();
+        else window.addEventListener('load', main);
     }
 
     function retryUntilSuccess() {
-        let retryCount = 0;
         const maxRetries = 5;
-        const delay = 1000; // 1 second
+        const delayMs = 1500;
 
+        let retryCnt = 0;
         const interval = setInterval(() => {
             if (document.querySelector('div.search-page.success > div.search-results > div > ul > li.package')) {
                 clearInterval(interval);
                 runWhenLoaded();
-            } else if (retryCount >= maxRetries) {
+            } else if (retryCnt >= maxRetries) {
                 clearInterval(interval);
                 console.warn("Max retries reached. Custom elements may not load properly.");
-            } else {
-                retryCount++;
             }
-        }, delay);
+            else retryCnt++;
+        }, delayMs);
     }
 
     retryUntilSuccess();
