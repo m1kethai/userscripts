@@ -1,14 +1,14 @@
 // ==UserScript==
-// @name         NixOS Package Search: GitHub Stargazers badge for all relevant packages
-// @namespace    https://github.com/m1kethai/UserScripts
-// @supportURL   https://github.com/m1kethai/UserScripts
-// @version      1.4
-// @description  Adds a GitHub Stargazers (# of GH repo stars) badge/link to every applicable nixpkg (all the ones with a GH repo "Homepage") returned in the search results. Optionally supply your own API token in localStorage (key: `userscript_gh_token`) to bypass the default 60 requests/min rate limit.
-// @author       m1kethai
-// @license      MIT
-// @match        https://search.nixos.org/packages*query*
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=nixos.org
-// @grant        none
+// @name        NixOS Package Search - GitHub Stargazers badges for all applicable search results
+// @namespace   https://github.com/m1kethai/userscripts
+// @supportURL  https://github.com/m1kethai/userscripts/issues
+// @version     1.5
+// @description Adds a Stargazers badge to all package results with a GitHub repo "Homepage". Optionally provide your own GH token in localStorage (`userscript_gh_token`) to not be subject to the 60 req/min rate limit.
+// @author      m1kethai
+// @license     MIT
+// @match       https://search.nixos.org/packages*query*
+// @icon        https://www.google.com/s2/favicons?sz=64&domain=nixos.org
+// @grant       none
 // ==/UserScript==
 
 (function() {
@@ -70,13 +70,13 @@
             const
                 starsBadge = document.createElement("li"),
                 starsLink = document.createElement("a");
-        starsBadge.appendChild(starsLink);
+            starsBadge.appendChild(starsLink);
             starsBadge.style = styles.badge;
             starsLink.style = styles.text;
-        starsLink.target = "_blank";
+            starsLink.target = "_blank";
             starsLink.href = l.href;
-        return starsBadge;
-    });
+            return starsBadge;
+        });
     }
 
     async function main() {
