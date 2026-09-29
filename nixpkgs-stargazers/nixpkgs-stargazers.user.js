@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name        NixOS Package Search - GitHub Stargazers badges for all applicable search results
+// @name        NixOS Package Search: GitHub Stargazers (nixpkg repo stars) badges for relevant search results
 // @namespace   https://github.com/m1kethai/userscripts
 // @supportURL  https://github.com/m1kethai/userscripts/issues
-// @version     1.5
-// @description Adds a Stargazers badge to all package results with a GitHub repo "Homepage". Optionally provide your own GH token in localStorage (`userscript_gh_token`) to not be subject to the 60 req/min rate limit.
+// @version     1.5.1
+// @description A custom Stargazers badge to all package results with a GitHub repo "Homepage". Optionally provide your own GH token in localStorage (`userscript_gh_token`) to avoid the 60 requests/min unauthenticated rate limit.
 // @author      m1kethai
 // @license     MIT
 // @match       https://search.nixos.org/packages*query*
@@ -13,7 +13,6 @@
 
 (function() {
     'use strict';
-
     const ghToken = (localStorage.userscript_gh_token || null);
 
     async function getGithubHomepageLinks() {
